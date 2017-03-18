@@ -1,5 +1,5 @@
 ---
-title: "LuaJIT benchmark results"
+title: "RaptorJIT benchmark results"
 output:
   html_document:
     toc: true
@@ -20,7 +20,7 @@ d <- read.csv("bench.csv")
 # Overview
 
 ```{r include=FALSE}
-runs <- mean(summarize(group_by(d, benchmark, luajit), runs = n())$runs)
+runs <- mean(summarize(group_by(d, benchmark, raptorjit), runs = n())$runs)
 ```
 
 This is an automatically generated report showing benchmark results based on `r round(runs)` runs (iterations) per benchmark for each branch.
@@ -34,9 +34,9 @@ The relative performance of between branches is computed by taking each branch's
 ```{r echo=FALSE, fig.width=12}
 relative <- d %>%
   group_by(benchmark) %>% mutate(overallmean = mean(cycles)) %>% ungroup() %>%
-  group_by(benchmark, luajit) %>% mutate(relativemean = overallmean / mean(cycles))
+  group_by(benchmark, raptorjit) %>% mutate(relativemean = overallmean / mean(cycles))
 
-ggplot(aes(y=relativemean, x=benchmark, fill=luajit), data=relative) +
+ggplot(aes(y=relativemean, x=benchmark, fill=raptorjit), data=relative) +
   geom_bar(stat = "identity", position = "dodge") +
   theme(axis.text.x = element_text(angle=90)) +
   scale_y_continuous(breaks=seq(0, 2, 0.2), limits=c(0,2), labels=scales::percent) +
@@ -49,8 +49,8 @@ ggplot(aes(y=relativemean, x=benchmark, fill=luajit), data=relative) +
 The relative standard deviation (RSD) is a measure of how consistent benchmark results are when compared with other runs from the same branch. If the RSD is 0% then every run of the benchmark on the given branch performed exactly the same.
 
 ```{r echo=FALSE, fig.width=12}
-rsd <- group_by(d, benchmark, luajit) %>% mutate(rsd=sd(cycles)/mean(cycles)) %>% ungroup()
-ggplot(aes(y=rsd, x=benchmark, fill=luajit), data=rsd) +
+rsd <- group_by(d, benchmark, raptorjit) %>% mutate(rsd=sd(cycles)/mean(cycles)) %>% ungroup()
+ggplot(aes(y=rsd, x=benchmark, fill=raptorjit), data=rsd) +
   geom_bar(stat = "identity", position = "dodge") +
   scale_y_continuous(breaks=seq(0, 0.5, 0.1), limits=c(0,0.5), labels=scales::percent) +
   theme(axis.text.x = element_text(angle=90)) +
@@ -62,8 +62,8 @@ ggplot(aes(y=rsd, x=benchmark, fill=luajit), data=rsd) +
 The number of instructions retired per cycle (IPC) provides some insight into how the CPU deals with the generated code. Low IPC may indicate hazards such as cache misses and branch mispredictions.
 
 ```{r echo=FALSE, fig.width=12}
-ipc <- group_by(d, benchmark, luajit) %>% mutate(ipc=instructions/cycles) %>% ungroup()
-ggplot(aes(y=ipc, x=benchmark, fill=luajit), data=ipc) +
+ipc <- group_by(d, benchmark, raptorjit) %>% mutate(ipc=instructions/cycles) %>% ungroup()
+ggplot(aes(y=ipc, x=benchmark, fill=raptorjit), data=ipc) +
   geom_bar(stat = "identity", position = "dodge") +
   theme(axis.text.x = element_text(angle=90)) +
   ylab("instructions/cycle") +
@@ -78,8 +78,8 @@ Numeric summary statistics can be useful for extra precision and comparison betw
 
 ```{r kable, echo=FALSE}
 kable(
-  col.names = c("Benchmark", "LuaJIT branch", "Runs", "Mean running time (Gigacycles)", "Relative Standard Deviation (%)"),
-  summarize(group_by(d, benchmark, luajit),
+  col.names = c("Benchmark", "RaptorJIT branch", "Runs", "Mean running time (Gigacycles)", "Relative Standard Deviation (%)"),
+  summarize(group_by(d, benchmark, raptorjit),
             runs = n(),
             mean = mean(cycles)/1000000000,
             rsd = round(sd(cycles)/1000000000*100/mean, 2)))

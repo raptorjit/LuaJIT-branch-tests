@@ -1,14 +1,19 @@
 { pkgs ? import <nixpkgs> {},
-  luajitAname ? "unknown",
-  luajitBname,
-  luajitCname,
-  luajitDname,
-  luajitEname,
-  luajitAsrc,
-  luajitBsrc,
-  luajitCsrc,
-  luajitDsrc,
-  luajitEsrc,
+  raptorjitAname ? "unknown",
+  raptorjitBname ? false,
+  raptorjitCname ? false,
+  raptorjitDname ? false,
+  raptorjitEname ? false,
+  raptorjitAsrc,
+  raptorjitBsrc ? false,
+  raptorjitCsrc ? false,
+  raptorjitDsrc ? false,
+  raptorjitEsrc ? false,
+  raptorjitAargs ? "",
+  raptorjitBargs ? "",
+  raptorjitCargs ? "",
+  raptorjitDargs ? "",
+  raptorjitEargs ? "",
   testsuiteSrc,
   hardware ? null,
   benchmarkRuns ? 1 }:
@@ -16,32 +21,31 @@
 with pkgs;
 with stdenv;
 
-# LuaJIT build derivation
-let buildLuaJIT = luajitName: luajitSrc: mkDerivation {
-    name = "luajit-${luajitName}";
-    version = luajitName;
-    src = luajitSrc;
+# RaptorJIT build derivation
+let buildRaptorJIT = raptorjitName: raptorjitSrc: clangStdenv.mkDerivation {
+    name = "raptorjit-${raptorjitName}";
+    version = raptorjitName;
+    src = raptorjitSrc;
+    buildInputs = [ luajit ];
     enableParallelBuilding = true;
     installPhase = ''
-      make install PREFIX=$out
-      if [ ! -e $out/bin/luajit ]; then
-        ln -s $out/bin/luajit-* $out/bin/luajit
-      fi
+      mkdir -p $out/bin
+      cp src/luajit $out/bin/raptorjit
     '';
   }; in
 
-# LuaJIT benchmark run derivatin
-# Run the standard LuaJIT benchmarks many times and produce a CSV file.
-let benchmarkLuaJIT = luajitName: luajitSrc:
-  let luajit = (buildLuaJIT luajitName luajitSrc); in
+# RaptorJIT benchmark run derivatin
+# Run the standard RaptorJIT benchmarks many times and produce a CSV file.
+let benchmarkRaptorJIT = raptorjitName: raptorjitSrc: raptorjitArgs:
+  let raptorjit = (buildRaptorJIT raptorjitName raptorjitSrc); in
   mkDerivation {
-    name = "luajit-${luajitName}-benchmarks";
+    name = "raptorjit-${raptorjitName}-benchmarks";
     src = testsuiteSrc;
     # Force consistent hardware
     requiredSystemFeatures = if hardware != null then [hardware] else [];
-    buildInputs = [ luajit linuxPackages.perf ];
+    buildInputs = [ raptorjit linuxPackages.perf ];
     buildPhase = ''
-      PATH=luajit/bin:$perf/bin:$PATH
+      PATH=raptorjit/bin:$perf/bin:$PATH
       # Run multiple iterations of the benchmarks
       for run in $(seq 1 ${toString benchmarkRuns}); do
         echo "Run $run"
@@ -55,7 +59,7 @@ let benchmarkLuaJIT = luajitName: luajitSrc:
              # Note: discard stdout due to overwhelming output
              timeout -sKILL 60 \
                perf stat -x, -o ../result/$run/$benchmark.perf \
-               luajit -e "math.randomseed($run)" $benchmark.lua $params \
+               raptorjit ${raptorjitArgs} -e "math.randomseed($run)" $benchmark.lua $params \
                   > /dev/null || \
                   rm result/$run/$benchmark.perf
           done)
@@ -69,22 +73,22 @@ let benchmarkLuaJIT = luajitName: luajitSrc:
         run=$(basename $resultdir)
         # Create the rows based on the perf logs
         for result in $resultdir/*.perf; do
-          luajit=${luajit.version}
+          raptorjit=${raptorjit.version}
           benchmark=$(basename -s.perf -a $result)
           instructions=$(awk -F, -e '$3 == "instructions" { print $1; }' $result)
           cycles=$(      awk -F, -e '$3 == "cycles"       { print $1; }' $result)
-          echo $luajit,$benchmark,$run,$instructions,$cycles >> $out/bench.csv
+          echo $raptorjit,$benchmark,$run,$instructions,$cycles >> $out/bench.csv
         done
       done
     '';
   }; in
 
 rec {
-  benchmarksA = (benchmarkLuaJIT luajitAname luajitAsrc);
-  benchmarksB = (benchmarkLuaJIT luajitBname luajitBsrc);
-  benchmarksC = (benchmarkLuaJIT luajitCname luajitCsrc);
-  benchmarksD = (benchmarkLuaJIT luajitDname luajitDsrc);
-  benchmarksE = (benchmarkLuaJIT luajitEname luajitEsrc);
+  benchmarksA = (benchmarkRaptorJIT raptorjitAname raptorjitAsrc raptorjitAargs);
+  benchmarksB = if raptorjitBsrc then (benchmarkRaptorJIT raptorjitBname raptorjitBsrc raptorjitBargs) else "";
+  benchmarksC = if raptorjitCsrc then (benchmarkRaptorJIT raptorjitCname raptorjitCsrc raptorjitCargs) else "";
+  benchmarksD = if raptorjitDsrc then (benchmarkRaptorJIT raptorjitDname raptorjitDsrc raptorjitDargs) else "";
+  benchmarksE = if raptorjitEsrc then (benchmarkRaptorJIT raptorjitEname raptorjitEsrc raptorjitEargs) else "";
 
   benchmarkResults = mkDerivation {
     name = "benchmark-results";
@@ -93,10 +97,12 @@ rec {
       source $stdenv/setup
       # Get the CSV file
       mkdir -p $out/nix-support
-      echo "luajit,benchmark,run,instructions,cycles" > bench.csv
-      cat ${benchmarksA}/bench.csv ${benchmarksB}/bench.csv ${benchmarksC}/bench.csv \
-          ${benchmarksD}/bench.csv ${benchmarksE}/bench.csv \
-          >> bench.csv
+      echo "raptorjit,benchmark,run,instructions,cycles" > bench.csv
+      cat ${benchmarksA}/bench.csv >> bench.csv
+      cat ${benchmarksB}/bench.csv >> bench.csv || true # may not exist
+      cat ${benchmarksC}/bench.csv >> bench.csv || true
+      cat ${benchmarksD}/bench.csv >> bench.csv || true
+      cat ${benchmarksE}/bench.csv >> bench.csv || true
       cp bench.csv $out
       echo "file CSV $out/bench.csv" >> $out/nix-support/hydra-build-products
       # Generate the report
