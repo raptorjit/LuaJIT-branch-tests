@@ -1,14 +1,14 @@
 { pkgs ? import <nixpkgs> {},
-  raptorjitAname ? "unknown",
-  raptorjitBname ? false,
-  raptorjitCname ? false,
-  raptorjitDname ? false,
-  raptorjitEname ? false,
+  raptorjitAname ? "A",
+  raptorjitBname ? "B",
+  raptorjitCname ? "C",
+  raptorjitDname ? "D",
+  raptorjitEname ? "E",
   raptorjitAsrc,
-  raptorjitBsrc ? false,
-  raptorjitCsrc ? false,
-  raptorjitDsrc ? false,
-  raptorjitEsrc ? false,
+  raptorjitBsrc ? null,
+  raptorjitCsrc ? null,
+  raptorjitDsrc ? null,
+  raptorjitEsrc ? null,
   raptorjitAargs ? "",
   raptorjitBargs ? "",
   raptorjitCargs ? "",
@@ -85,10 +85,10 @@ let benchmarkRaptorJIT = raptorjitName: raptorjitSrc: raptorjitArgs:
 
 rec {
   benchmarksA = (benchmarkRaptorJIT raptorjitAname raptorjitAsrc raptorjitAargs);
-  benchmarksB = if raptorjitBsrc then (benchmarkRaptorJIT raptorjitBname raptorjitBsrc raptorjitBargs) else "";
-  benchmarksC = if raptorjitCsrc then (benchmarkRaptorJIT raptorjitCname raptorjitCsrc raptorjitCargs) else "";
-  benchmarksD = if raptorjitDsrc then (benchmarkRaptorJIT raptorjitDname raptorjitDsrc raptorjitDargs) else "";
-  benchmarksE = if raptorjitEsrc then (benchmarkRaptorJIT raptorjitEname raptorjitEsrc raptorjitEargs) else "";
+  benchmarksB = if raptorjitBsrc != null then (benchmarkRaptorJIT raptorjitBname raptorjitBsrc raptorjitBargs) else "";
+  benchmarksC = if raptorjitCsrc != null then (benchmarkRaptorJIT raptorjitCname raptorjitCsrc raptorjitCargs) else "";
+  benchmarksD = if raptorjitDsrc != null then (benchmarkRaptorJIT raptorjitDname raptorjitDsrc raptorjitDargs) else "";
+  benchmarksE = if raptorjitEsrc != null then (benchmarkRaptorJIT raptorjitEname raptorjitEsrc raptorjitEargs) else "";
 
   benchmarkResults = mkDerivation {
     name = "benchmark-results";
