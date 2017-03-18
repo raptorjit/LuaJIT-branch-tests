@@ -36,7 +36,7 @@ let buildRaptorJIT = raptorjitName: raptorjitSrc: clangStdenv.mkDerivation {
 
 # RaptorJIT benchmark run derivatin
 # Run the standard RaptorJIT benchmarks many times and produce a CSV file.
-let benchmarkRaptorJIT = raptorjitName: raptorjitSrc: raptorjitArgs:
+let benchmarkRaptorJIT = letter: raptorjitName: raptorjitSrc: raptorjitArgs:
   let raptorjit = (buildRaptorJIT raptorjitName raptorjitSrc); in
   mkDerivation {
     name = "raptorjit-${raptorjitName}-benchmarks";
@@ -77,18 +77,18 @@ let benchmarkRaptorJIT = raptorjitName: raptorjitSrc: raptorjitArgs:
           benchmark=$(basename -s.perf -a $result)
           instructions=$(awk -F, -e '$3 == "instructions" { print $1; }' $result)
           cycles=$(      awk -F, -e '$3 == "cycles"       { print $1; }' $result)
-          echo $raptorjit,$benchmark,$run,$instructions,$cycles >> $out/bench.csv
+          echo ${letter},$raptorjit,$benchmark,$run,$instructions,$cycles >> $out/bench.csv
         done
       done
     '';
   }; in
 
 rec {
-  benchmarksA = (benchmarkRaptorJIT raptorjitAname raptorjitAsrc raptorjitAargs);
-  benchmarksB = if raptorjitBsrc != null then (benchmarkRaptorJIT raptorjitBname raptorjitBsrc raptorjitBargs) else "";
-  benchmarksC = if raptorjitCsrc != null then (benchmarkRaptorJIT raptorjitCname raptorjitCsrc raptorjitCargs) else "";
-  benchmarksD = if raptorjitDsrc != null then (benchmarkRaptorJIT raptorjitDname raptorjitDsrc raptorjitDargs) else "";
-  benchmarksE = if raptorjitEsrc != null then (benchmarkRaptorJIT raptorjitEname raptorjitEsrc raptorjitEargs) else "";
+  benchmarksA =                               (benchmarkRaptorJIT "A" raptorjitAname raptorjitAsrc raptorjitAargs);
+  benchmarksB = if raptorjitBsrc != null then (benchmarkRaptorJIT "B" raptorjitBname raptorjitBsrc raptorjitBargs) else "";
+  benchmarksC = if raptorjitCsrc != null then (benchmarkRaptorJIT "C" raptorjitCname raptorjitCsrc raptorjitCargs) else "";
+  benchmarksD = if raptorjitDsrc != null then (benchmarkRaptorJIT "D" raptorjitDname raptorjitDsrc raptorjitDargs) else "";
+  benchmarksE = if raptorjitEsrc != null then (benchmarkRaptorJIT "E" raptorjitEname raptorjitEsrc raptorjitEargs) else "";
 
   benchmarkResults = mkDerivation {
     name = "benchmark-results";
@@ -97,7 +97,7 @@ rec {
       source $stdenv/setup
       # Get the CSV file
       mkdir -p $out/nix-support
-      echo "raptorjit,benchmark,run,instructions,cycles" > bench.csv
+      echo "letter,raptorjit,benchmark,run,instructions,cycles" > bench.csv
       cat ${benchmarksA}/bench.csv >> bench.csv
       cat ${benchmarksB}/bench.csv >> bench.csv || true # may not exist
       cat ${benchmarksC}/bench.csv >> bench.csv || true
